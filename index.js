@@ -1,7 +1,6 @@
 import { Octokit, App } from "octokit";
 import 'dotenv/config'
 import { DateTime } from "luxon";
-import * as fs from 'fs';
 import { Base64 } from "js-base64";
 
 const octokit = new Octokit({ auth: process.env.GITHUB_ACCESS_TOKEN });
@@ -10,10 +9,10 @@ const makeGraph = (percentage) => {
     const doneBlock = '█'
     const emptyBlock = '░'
 
-    const percentageRound = percentage.toFixed()
+    const percentageRound = (percentage.toFixed() / 4).toFixed()
 
     let graph = ''
-    for (let i = 0; i < 100; i++) {
+    for (let i = 0; i < 25; i++) {
         if (i < percentageRound) {
             graph += doneBlock
         } else {
@@ -54,7 +53,6 @@ const run = async () => {
         data: { login },
     } = await octokit.rest.users.getAuthenticated();
     
-
     const { data: repositories } = await octokit.request('GET /user/repos', { type: 'private' })
 
     const owner = login
@@ -109,40 +107,50 @@ const run = async () => {
     const weekdaysList = createList(weekdays)
     const timesList = createList(times)
 
-    const filename = 'README.md'
     const key = `GITHUB STATS`
     const commentBegin = `<!-- `
     const commentEnd = ` -->`
 
-    let content = fs.readFileSync(filename, 'utf8');
+    const readme = await octokit.rest.repos.getReadme({
+        owner: login,
+        repo: login
+    });
+
+    let content = Base64.decode(readme.data.content)
 
     const beginTokenPattern = `(${commentBegin}\\s*?${key} START\\s*?${commentEnd}.*?[\\r\\n]+)`;
     const endTokenPattern   = `(${commentBegin}\\s*?${key} END\\s*?${commentEnd})`;
     const contentPattern    = '[\\s\\S]*?';
-    const sourceContent = '### Weekday stats\n' + weekdaysList + '\n\n\n ### Time of day stats\n' + timesList
+    const sourceContent = '### Weekday stats\n<pre>' + weekdaysList + '</pre>\n\n\n ### Time of day stats\n<pre>' + timesList + '</pre>'
 
     const RX = new RegExp(`${beginTokenPattern}${contentPattern}${endTokenPattern}`, 'g');
     const newContent = content.replace(RX, `$1${sourceContent}$2`)
 
     const contentEncoded = Base64.encode(newContent);
 
-    const { data } = await octokit.rest.repos.createOrUpdateFileContents({
-        owner: login,
-        repo: login,
-        path: filename,
-        message: "chore: Added README.md programatically",
-        content: contentEncoded,
-        committer: {
-            name: `Octokit Bot`,
-            email: "kodieupton@gmail.com",
-        },
-        author: {
-            name: "Octokit Bot",
-            email: "kodieupton@gmail.com",
-        },
-    });
+    try {
+        await octokit.rest.repos.createOrUpdateFileContents({
+            owner: login,
+            repo: login,
+            path: 'README.md',
+            message: "chore: Added README.md programatically",
+            content: contentEncoded,
+            sha: readme.data.sha,
+            committer: {
+                name: `Octokit Bot`,
+                email: "kodieupton@gmail.com",
+            },
+            author: {
+                name: "Octokit Bot",
+                email: "kodieupton@gmail.com",
+            },
+        });
 
-    console.log('Readme updated')
+        console.log('Readme updated')
+    } catch (error) {
+        console.error(error.message);
+    }
+    
 }
 
 run();
