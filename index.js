@@ -3,7 +3,7 @@ import 'dotenv/config'
 import { DateTime } from "luxon";
 import { Base64 } from "js-base64";
 
-const octokit = new Octokit({ auth: process.env.GITHUB_ACCESS_TOKEN });
+const octokit = new Octokit({ auth: process.env.GH_ACCESS_TOKEN });
 
 const makeGraph = (percentage) => {
     const doneBlock = '█'
