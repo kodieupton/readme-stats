@@ -1,9 +1,7 @@
-FROM node:17-alpine
+FROM node:15.8.0
 
-COPY ["package.json", "package-lock.json*", "./"]
+COPY . /
 
 RUN npm install
 
-COPY . .
-
-CMD [ "node", "index.js" ]
+CMD [ "node", "/index.js" ]
