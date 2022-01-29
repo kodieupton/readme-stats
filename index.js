@@ -90,7 +90,7 @@ const run = async () => {
         })
 
         for (const commit of commits) {
-            const commitDate = DateTime.fromISO(commit.commit.committer.date)
+            const commitDate = DateTime.fromISO(commit.commit.committer.date).setZone("Pacific/Auckland")
 
             const weekday = commitDate.weekdayLong
             const hour = commitDate.hour
