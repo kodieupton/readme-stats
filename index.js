@@ -153,8 +153,4 @@ const run = async () => {
     
 }
 
-try {
-    run();
-} catch (error) {
-    console.error(error.message);
-}
+run();
