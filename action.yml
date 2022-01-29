@@ -7,5 +7,6 @@ inputs:
     default: ${{ github.token }}
 
 runs:
-  using: 'docker'
-  main: 'Dockerfile'
+  using: 'node16'
+  pre: 'npm install'
+  main: 'index.js'
