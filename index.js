@@ -2,8 +2,15 @@ import { Octokit, App } from "octokit";
 import 'dotenv/config'
 import { DateTime } from "luxon";
 import { Base64 } from "js-base64";
+import { core } from '@actions/core'
 
-const octokit = new Octokit({ auth: process.env.GH_ACCESS_TOKEN });
+const authToken = core.getInput('GH_ACCESS_TOKEN') || process.env.GH_ACCESS_TOKEN
+
+if (!authToken) {
+    core.setFailed('Auth Token not provided');
+}
+
+const octokit = new Octokit({ auth: authToken });
 
 const makeGraph = (percentage) => {
     const doneBlock = '█'
