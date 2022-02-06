@@ -1,16 +1,16 @@
-import { Octokit, App } from "octokit";
 import 'dotenv/config'
-import { DateTime } from "luxon";
-import { Base64 } from "js-base64";
+import { Base64 } from "js-base64"
 import core from '@actions/core'
+import GitHub from './lib/github.js'
+import BitBucket from './lib/bitbucket.js'
 
-const authToken = core.getInput('GH_ACCESS_TOKEN') || process.env.GH_ACCESS_TOKEN
+const GH_ACCESS_TOKEN = core.getInput('GH_ACCESS_TOKEN') || process.env.GH_ACCESS_TOKEN
+const bitbucketUsername = core.getInput('BITBUCKET_USERNAME') || process.env.BITBUCKET_USERNAME
+const bitbucketPassword = core.getInput('BITBUCKET_PASSWORD') || process.env.BITBUCKET_PASSWORD
 
-if (!authToken) {
+if (!GH_ACCESS_TOKEN) {
     core.setFailed('Auth Token not provided');
 }
-
-const octokit = new Octokit({ auth: authToken });
 
 const makeGraph = (percentage) => {
     const doneBlock = '█'
@@ -56,14 +56,6 @@ const createList = (dataList) => {
 
 const run = async () => {
 
-    const {
-        data: { login },
-    } = await octokit.rest.users.getAuthenticated();
-    
-    const { data: repositories } = await octokit.request('GET /user/repos', { type: 'private' })
-
-    const owner = login
-
     let times = {
         morning: 0, // 6 - 12
         daytime: 0, // 12 - 18
@@ -81,35 +73,28 @@ const run = async () => {
         Sunday: 0
     }
 
-    let total = 0
+    const gh = new GitHub(GH_ACCESS_TOKEN)
 
-    for (const repo of repositories) {
-        const { data: commits } = await octokit.request('GET /repos/:owner/:repo/commits', {
-            owner,
-            repo: repo.name
+    try {
+        await gh.getCommitCount(times, weekdays)
+    } catch (err) {
+        console.log('Failed to get GitHub commits')
+    }
+
+    if (bitbucketUsername && bitbucketPassword) {
+        const bb = new BitBucket({
+            username: bitbucketUsername,
+            password: bitbucketPassword,
         })
 
-        for (const commit of commits) {
-            const commitDate = DateTime.fromISO(commit.commit.committer.date).setZone("Pacific/Auckland")
-
-            const weekday = commitDate.weekdayLong
-            const hour = commitDate.hour
-
-            if (hour >= 6 && hour < 12) {
-                times.morning += 1
-            } else if (hour >= 12 && hour < 18) {
-                times.daytime += 1
-            } else if (hour >= 18 && hour < 24) {
-                times.evening += 1
-            } else if (hour >= 0 && hour < 6) {
-                times.night += 1
-            }
-
-            weekdays[weekday] += 1
-
-            total += 1
+        try {
+            await bb.getCommitCount(times, weekdays)
+        } catch (err) {
+            console.log('Failed to get Bitbucket commits')
         }
     }
+
+    const owner = await gh.getLogin()
 
     const weekdaysList = createList(weekdays)
     const timesList = createList(times)
@@ -118,10 +103,7 @@ const run = async () => {
     const commentBegin = `<!-- `
     const commentEnd = ` -->`
 
-    const readme = await octokit.rest.repos.getReadme({
-        owner: login,
-        repo: login
-    });
+    const readme = await gh.getReadme()
 
     let content = Base64.decode(readme.data.content)
 
@@ -136,9 +118,9 @@ const run = async () => {
     const contentEncoded = Base64.encode(newContent);
 
     try {
-        await octokit.rest.repos.createOrUpdateFileContents({
-            owner: login,
-            repo: login,
+        await gh.createOrUpdateFileContents({
+            owner: owner,
+            repo: owner,
             path: 'README.md',
             message: "chore: Added README.md programatically",
             content: contentEncoded,
@@ -157,7 +139,6 @@ const run = async () => {
     } catch (error) {
         console.error(error.message);
     }
-    
 }
 
 run();
