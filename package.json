@@ -11,9 +11,12 @@
   "dependencies": {
     "@actions/core": "^1.6.0",
     "@actions/github": "^5.0.0",
+    "axios": "^0.25.0",
+    "bitbucket": "^2.7.0",
     "dotenv": "^14.2.0",
     "js-base64": "^3.7.2",
     "luxon": "^2.3.0",
+    "node-fetch": "^3.2.0",
     "octokit": "^1.7.1"
   },
   "type": "module"
