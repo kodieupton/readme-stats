@@ -75,11 +75,7 @@ const run = async () => {
 
     const gh = new GitHub(GH_ACCESS_TOKEN)
 
-    try {
-        await gh.getCommitCount(times, weekdays)
-    } catch (err) {
-        console.log('Failed to get GitHub commits')
-    }
+    await gh.getCommitCount(times, weekdays)
 
     if (bitbucketUsername && bitbucketPassword) {
         const bb = new BitBucket({
